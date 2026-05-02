@@ -58,7 +58,7 @@ If selecting an **advanced generative project**, you must:
 - Avoid training large-scale generative models from scratch
 - Get it approved by the team beforehand
 
----
+--- 
 
 ## 3. Research Hypothesis
 
