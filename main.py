@@ -1,8 +1,9 @@
 from __future__ import annotations
 from src.data import prepare_data
-from src.baselines import mean_baseline
 from src.baselines import mean_baseline, tfidf_ridge
 from src.evaluate import score, save_results
+from src.plots import plot_training_curves
+from src.train import train_bilstm
 
 import os
 import random
@@ -10,9 +11,9 @@ import random
 import numpy as np
 
 SEED = 42
+SEEDS = (42, 1, 2)
 DATA_DIR = "data"
 OUTPUT_DIR = "outputs"
-TARGETS = ["cohesion", "syntax", "vocabulary", "phraseology", "grammar", "conventions"]
 
 
 def set_seed(seed):
@@ -71,16 +72,23 @@ def main():
     train_df, val_df, test_df = prepare_data(DATA_DIR, OUTPUT_DIR, SEED)
 
     results = []
+    histories = {}
 
     y_true, y_pred = mean_baseline(train_df, test_df)
-    results.append(score("mean", y_true, y_pred))
+    results.append(score("mean", y_true, [y_pred]))
 
     y_true, y_pred = tfidf_ridge(train_df, test_df, SEED)
-    results.append(score("tfidf_ridge", y_true, y_pred))
+    results.append(score("tfidf_ridge", y_true, [y_pred]))
 
+    y_true, preds, hist = train_bilstm(train_df, val_df, test_df, SEEDS)
+    results.append(score("bilstm", y_true, preds))
+    histories["bilstm"] = hist
+
+    plot_training_curves(histories, OUTPUT_DIR)
     save_results(results, OUTPUT_DIR)
     for row in results:
-        print(row["model"], round(row["mcrmse"], 4))
+        print(row["model"], round(row["mcrmse"], 4), "+/-", round(row["mcrmse_std"], 4))
+
 
 
 if __name__ == "__main__":

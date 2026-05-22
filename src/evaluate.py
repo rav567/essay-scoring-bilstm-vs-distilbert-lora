@@ -10,10 +10,15 @@ def per_trait_rmse(y_true, y_pred):
     return np.sqrt(((np.asarray(y_true) - np.asarray(y_pred)) ** 2).mean(axis=0))
 
 
-def score(name, y_true, y_pred):
-    rmses = per_trait_rmse(y_true, y_pred)
-    row = {"model": name, "mcrmse": float(rmses.mean())}
-    for target, value in zip(TARGETS, rmses):
+def score(name, y_true, preds_list):
+    mcrmses = [float(per_trait_rmse(y_true, p).mean()) for p in preds_list]
+    per_trait = np.mean([per_trait_rmse(y_true, p) for p in preds_list], axis=0)
+    row = {
+        "model": name,
+        "mcrmse": float(np.mean(mcrmses)),
+        "mcrmse_std": float(np.std(mcrmses)),
+    }
+    for target, value in zip(TARGETS, per_trait):
         row[target] = float(value)
     return row
 
