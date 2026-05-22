@@ -1,5 +1,7 @@
 from __future__ import annotations
 from src.data import prepare_data
+from src.baselines import mean_baseline
+from src.evaluate import score, save_results
 
 import os
 import random
@@ -66,6 +68,12 @@ def main():
     set_seed(SEED)
     train_df, val_df, test_df = prepare_data(DATA_DIR, OUTPUT_DIR, SEED)
     print(f"train={len(train_df)} val={len(val_df)} test={len(test_df)}")
+    results = []
+    y_true, y_pred = mean_baseline(train_df, test_df)
+    results.append(score("mean", y_true, y_pred))
+
+    save_results(results, OUTPUT_DIR)
+    print(results[-1])
 
 
 if __name__ == "__main__":
