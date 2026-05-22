@@ -1,4 +1,5 @@
 from __future__ import annotations
+from src.data import prepare_data
 
 import os
 import random
@@ -63,7 +64,8 @@ def main():
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     set_seed(SEED)
-    print("phase 0 ready")
+    train_df, val_df, test_df = prepare_data(DATA_DIR, OUTPUT_DIR, SEED)
+    print(f"train={len(train_df)} val={len(val_df)} test={len(test_df)}")
 
 
 if __name__ == "__main__":
