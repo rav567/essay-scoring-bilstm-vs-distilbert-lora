@@ -4,6 +4,7 @@ from src.baselines import mean_baseline, tfidf_ridge
 from src.evaluate import score, save_results
 from src.plots import plot_training_curves
 from src.train import train_bilstm
+from src.transformer_models import train_transformers
 
 import os
 import random
@@ -84,12 +85,15 @@ def main():
     results.append(score("bilstm", y_true, preds))
     histories["bilstm"] = hist
 
+    y_true, tpreds, thist = train_transformers(train_df, val_df, test_df, SEEDS)
+    for name in tpreds:
+        results.append(score(name, y_true, tpreds[name]))
+        histories[name] = thist[name]
+
     plot_training_curves(histories, OUTPUT_DIR)
     save_results(results, OUTPUT_DIR)
     for row in results:
         print(row["model"], round(row["mcrmse"], 4), "+/-", round(row["mcrmse_std"], 4))
-
-
 
 if __name__ == "__main__":
     main()
