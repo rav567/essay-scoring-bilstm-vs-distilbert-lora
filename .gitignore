@@ -130,3 +130,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+env/
+data/
+outputs/
+kaggle.json
+.DS_Store
