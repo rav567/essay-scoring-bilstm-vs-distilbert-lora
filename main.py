@@ -1,6 +1,7 @@
 from __future__ import annotations
 from src.data import prepare_data
 from src.baselines import mean_baseline
+from src.baselines import mean_baseline, tfidf_ridge
 from src.evaluate import score, save_results
 
 import os
@@ -66,14 +67,20 @@ def main():
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     set_seed(SEED)
+
     train_df, val_df, test_df = prepare_data(DATA_DIR, OUTPUT_DIR, SEED)
-    print(f"train={len(train_df)} val={len(val_df)} test={len(test_df)}")
+
     results = []
+
     y_true, y_pred = mean_baseline(train_df, test_df)
     results.append(score("mean", y_true, y_pred))
 
+    y_true, y_pred = tfidf_ridge(train_df, test_df, SEED)
+    results.append(score("tfidf_ridge", y_true, y_pred))
+
     save_results(results, OUTPUT_DIR)
-    print(results[-1])
+    for row in results:
+        print(row["model"], round(row["mcrmse"], 4))
 
 
 if __name__ == "__main__":
