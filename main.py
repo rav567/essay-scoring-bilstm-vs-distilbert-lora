@@ -7,6 +7,7 @@ from src.train import train_bilstm
 from src.transformer_models import train_transformers
 from src.probe import run_probing
 from src.represent import run_representation
+from src.analyse import plot_results_bar, error_analysis
 
 import os
 import random
@@ -93,11 +94,13 @@ def main():
         histories[name] = thist[name]
 
     run_probing(train_df, val_df, test_df, OUTPUT_DIR)
-
     run_representation(train_df, val_df, test_df, OUTPUT_DIR)
-
+    
     plot_training_curves(histories, OUTPUT_DIR)
-    save_results(results, OUTPUT_DIR)
+    results_df = save_results(results, OUTPUT_DIR)
+    plot_results_bar(results_df, OUTPUT_DIR)
+    error_analysis(test_df, tpreds["finetuned"], OUTPUT_DIR)
+
     for row in results:
         print(row["model"], round(row["mcrmse"], 4), "+/-", round(row["mcrmse_std"], 4))
 
