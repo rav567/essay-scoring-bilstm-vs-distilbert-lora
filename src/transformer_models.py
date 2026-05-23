@@ -94,7 +94,7 @@ def _train_single(kind, rank, data, device, seed):
 
     model.load_state_dict(best_state)
     preds = _predict(model, eval_ids, eval_mask, device)
-    return preds, {"train_loss": train_losses, "val_loss": val_losses}
+    return model, preds, {"train_loss": train_losses, "val_loss": val_losses}
 
 
 def train_transformers(train_df, val_df, eval_df, seeds, lora_ranks=(4, 8, 16), max_len=256):
@@ -120,9 +120,22 @@ def train_transformers(train_df, val_df, eval_df, seeds, lora_ranks=(4, 8, 16), 
     for label, kind, rank in variants:
         preds, hists = [], []
         for seed in seeds:
-            pred, history = _train_single(kind, rank, data, device, seed)
+            _, pred, history = _train_single(kind, rank, data, device, seed)
             preds.append(pred)
             hists.append(history)
         preds_by_model[label] = preds
         histories[label] = hists
     return eval_df[TARGETS].values, preds_by_model, histories
+
+def train_for_probing(train_df, val_df, seed=42, max_len=256):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    train_ids, train_mask = _encode(tokenizer, train_df["full_text"], max_len)
+    val_ids, val_mask = _encode(tokenizer, val_df["full_text"], max_len)
+    data = (
+        train_ids, train_mask, torch.tensor(train_df[TARGETS].values, dtype=torch.float32),
+        val_ids, val_mask, torch.tensor(val_df[TARGETS].values, dtype=torch.float32),
+        val_ids, val_mask,
+    )
+    model, _, _ = _train_single("full", None, data, device, seed)
+    return model

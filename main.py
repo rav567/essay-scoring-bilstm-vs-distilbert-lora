@@ -5,6 +5,7 @@ from src.evaluate import score, save_results
 from src.plots import plot_training_curves
 from src.train import train_bilstm
 from src.transformer_models import train_transformers
+from src.probe import run_probing
 
 import os
 import random
@@ -90,6 +91,8 @@ def main():
         results.append(score(name, y_true, tpreds[name]))
         histories[name] = thist[name]
 
+    run_probing(train_df, val_df, test_df, OUTPUT_DIR)
+    
     plot_training_curves(histories, OUTPUT_DIR)
     save_results(results, OUTPUT_DIR)
     for row in results:

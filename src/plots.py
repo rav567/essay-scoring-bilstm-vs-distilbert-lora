@@ -3,6 +3,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 
 
 def _panel(axis, runs, color, ylabel, mark_best=False):
@@ -34,4 +35,18 @@ def plot_training_curves(histories, output_dir):
         axes[idx][1].set_title(f"{name}: validation loss")
     fig.tight_layout()
     fig.savefig(f"{output_dir}/training_curves.png", dpi=150)
+    plt.close(fig)
+
+
+def plot_probing_heatmap(results, output_dir, targets):
+    fig, axes = plt.subplots(1, len(results), figsize=(6 * len(results), 4), squeeze=False)
+    layers = next(iter(results.values())).shape[0]
+    for axis, (name, scores) in zip(axes[0], results.items()):
+        sns.heatmap(scores, ax=axis, cmap="viridis", vmin=0, vmax=1, annot=True, fmt=".2f",
+                    xticklabels=targets, yticklabels=[f"L{i}" for i in range(layers)])
+        axis.set_title(f"{name}: probe correlation")
+        axis.set_xlabel("trait")
+        axis.set_ylabel("layer")
+    fig.tight_layout()
+    fig.savefig(f"{output_dir}/probing_heatmap.png", dpi=150)
     plt.close(fig)
