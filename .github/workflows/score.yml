@@ -71,5 +71,8 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Check for reproducibility
+      env:
+        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
       run: |
         micromamba run -n nlp-final python main.py
