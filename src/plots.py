@@ -1,3 +1,8 @@
+"""Shared plotting utilities for training curves and probing heatmaps.
+
+All functions save figures directly to disk and close them to avoid
+memory accumulation during a long pipeline run.
+"""
 import matplotlib
 
 matplotlib.use("Agg")
@@ -7,13 +12,15 @@ import seaborn as sns
 
 
 def _panel(axis, runs, color, ylabel, mark_best=False):
+    """Plot multi-seed loss curves with mean +/- 1 SD shading on a single axis.
+    """
     curves = np.array(runs)
     epochs = np.arange(1, curves.shape[1] + 1)
     for row in curves:
         axis.plot(epochs, row, color=color, alpha=0.15, linewidth=0.8)
     mean, sd = curves.mean(axis=0), curves.std(axis=0)
     axis.plot(epochs, mean, color=color, linewidth=2, label="mean")
-    axis.fill_between(epochs, mean - sd, mean + sd, color=color, alpha=0.2, label="±1 SD")
+    axis.fill_between(epochs, mean - sd, mean + sd, color=color, alpha=0.2, label="+/- 1 SD")
     if mark_best:
         best = int(np.argmin(mean)) + 1
         axis.axvline(best, color="black", linestyle=":", linewidth=1)
@@ -25,6 +32,11 @@ def _panel(axis, runs, color, ylabel, mark_best=False):
 
 
 def plot_training_curves(histories, output_dir):
+    """Save a grid of training and validation loss curves for all models.
+
+    Creates one row per model with two panels (train loss, val loss).
+    Saves the figure to output_dir/training_curves.png.
+    """
     rows = len(histories)
     fig, axes = plt.subplots(rows, 2, figsize=(11, 4 * rows), squeeze=False)
     for idx, (name, runs) in enumerate(histories.items()):
@@ -39,6 +51,11 @@ def plot_training_curves(histories, output_dir):
 
 
 def plot_probing_heatmap(results, output_dir, targets):
+    """Save side-by-side probing heatmaps for each encoder condition.
+
+    Each heatmap shows Pearson r between a linear probe's predictions and
+    ground-truth scores, indexed by layer (rows) and trait (columns).
+    """
     fig, axes = plt.subplots(1, len(results), figsize=(6 * len(results), 4), squeeze=False)
     layers = next(iter(results.values())).shape[0]
     for axis, (name, scores) in zip(axes[0], results.items()):
