@@ -1,23 +1,21 @@
 name: nlp-final
 
+channels:
+  - conda-forge
+  - defaults
+
 dependencies:
   - python=3.11
   - pip
   - pip:
-    - -r requirements.txt
     - numpy==1.26.4
     - pandas==2.2.2
     - scikit-learn==1.5.1
     - scipy==1.13.1
     - torch==2.3.1
     - transformers==4.42.4
-    - datasets==2.20.0
     - peft==0.11.1
-    - gensim==4.3.2
     - matplotlib==3.9.1
     - seaborn==0.13.2
-    - tqdm==4.66.4
     - kaggle==1.6.14
-
-channels:
-  - conda-forge
+    - pylint==3.2.5
