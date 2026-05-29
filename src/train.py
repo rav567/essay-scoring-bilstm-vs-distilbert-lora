@@ -1,3 +1,9 @@
+"""Training pipeline for the BiLSTM essay scoring model.
+
+Builds a word-level vocabulary from training text, encodes essays as padded
+token-id sequences, and trains a BiLSTMRegressor with Adam optimisation and
+MSE loss over multiple random seeds for confidence-interval estimation.
+"""
 from collections import Counter
 
 import numpy as np
@@ -12,6 +18,14 @@ PAD, UNK = 0, 1
 
 
 def build_vocab(texts, max_size=10000):
+    """Build a word-to-index vocabulary from a collection of texts.
+
+    Reserved indices: 0 = PAD, 1 = UNK. The remaining slots are filled with
+    the most frequent tokens up to max_size.
+
+    Returns:
+        Dict mapping lowercase word strings to integer indices.
+    """
     counter = Counter()
     for text in texts:
         counter.update(text.lower().split())
@@ -22,6 +36,13 @@ def build_vocab(texts, max_size=10000):
 
 
 def encode(texts, vocab, max_len):
+    """Encode a list of texts as a padded integer tensor.
+
+    Tokens beyond max_len are truncated; unknown tokens map to UNK.
+
+    Returns:
+        LongTensor of shape (len(texts), max_len).
+    """
     encoded = np.full((len(texts), max_len), PAD, dtype=np.int64)
     for i, text in enumerate(texts):
         for j, word in enumerate(text.lower().split()[:max_len]):
@@ -29,13 +50,27 @@ def encode(texts, vocab, max_len):
     return torch.tensor(encoded)
 
 
-def _forward(model, x):
+def _forward(model, token_ids):
+    """Run a deterministic forward pass with gradients disabled.
+
+    Returns:
+        FloatTensor of model predictions.
+    """
     model.eval()
     with torch.no_grad():
-        return model(x)
+        return model(token_ids)
 
 
 def _train_single(tensors, vocab_size, seed):
+    """Train one BiLSTM instance with a fixed seed and return predictions.
+
+    Uses Adam optimisation with MSE loss. Best model checkpoint (lowest
+    validation loss) is restored before final evaluation.
+
+    Returns:
+        Tuple of (predictions, history) where predictions is a numpy array
+        of shape (n_eval, 6) and history is a dict with train_loss/val_loss lists.
+    """
     x_train, y_train, x_val, y_val, x_eval = tensors
     torch.manual_seed(seed)
     epochs = 20 if torch.cuda.is_available() else 12
@@ -70,6 +105,14 @@ def _train_single(tensors, vocab_size, seed):
 
 
 def train_bilstm(train_df, val_df, eval_df, seeds, max_len=256):
+    """Train the BiLSTM over multiple seeds and return ensemble predictions.
+
+    Returns:
+        Tuple of (y_true, preds, histories):
+          - y_true: numpy array of shape (n_eval, 6).
+          - preds: list of per-seed numpy arrays of shape (n_eval, 6).
+          - histories: list of per-seed dicts with train_loss/val_loss.
+    """
     vocab = build_vocab(train_df["full_text"])
     tensors = (
         encode(train_df["full_text"].tolist(), vocab, max_len),
