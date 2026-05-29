@@ -1,3 +1,11 @@
+"""DistilBERT-based regressor variants for the ELL essay scoring task.
+
+Implements three fine-tuning strategies for DistilBERT-base-uncased:
+  - frozen: encoder weights fixed, only the regression head is trained.
+  - full: all encoder parameters fine-tuned end-to-end.
+  - lora: parameter-efficient fine-tuning via LoRA adapters (ranks 4, 8, 16).
+
+"""
 import numpy as np
 import torch
 from torch import nn
@@ -11,12 +19,21 @@ MODEL_NAME = "distilbert-base-uncased"
 
 
 class DistilBertRegressor(nn.Module):
+    """DistilBERT encoder with an attention-masked mean-pool regression head.
+    """
+
     def __init__(self, encoder, hidden_dim, num_targets=6):
+        """Initialise encoder and regression head."""
         super().__init__()
         self.encoder = encoder
         self.head = nn.Linear(hidden_dim, num_targets)
 
     def forward(self, input_ids, attention_mask):
+        """Forward pass with attention-masked mean pooling.
+
+        Returns:
+            FloatTensor of predicted scores, shape (batch, num_targets).
+        """
         hidden = self.encoder(
             input_ids=input_ids, attention_mask=attention_mask
         ).last_hidden_state
@@ -26,6 +43,11 @@ class DistilBertRegressor(nn.Module):
 
 
 def _build(kind, rank):
+    """Construct a DistilBertRegressor with the requested fine-tuning strategy.
+
+    Returns:
+        DistilBertRegressor ready for training.
+    """
     encoder = AutoModel.from_pretrained(MODEL_NAME)
     dim = encoder.config.dim
     if kind == "frozen":
@@ -41,6 +63,11 @@ def _build(kind, rank):
 
 
 def _encode(tokenizer, texts, max_len):
+    """Tokenise a list of texts and return padded id/mask tensors.
+
+    Returns:
+        Tuple of (input_ids, attention_mask) as LongTensors of shape (n, max_len).
+    """
     enc = tokenizer(
         list(texts), truncation=True, padding="max_length",
         max_length=max_len, return_tensors="pt",
@@ -49,6 +76,11 @@ def _encode(tokenizer, texts, max_len):
 
 
 def _predict(model, ids, mask, device, batch_size=32):
+    """Run batched inference and return predictions as a numpy array.
+
+    Returns:
+        numpy array of shape (n, 6) with scores clipped to [1.0, 5.0].
+    """
     model.eval()
     outs = []
     with torch.no_grad():
@@ -59,6 +91,12 @@ def _predict(model, ids, mask, device, batch_size=32):
 
 
 def _train_single(kind, rank, data, device, seed):
+    """Train one DistilBERT variant for a single seed and return the model.
+
+    Returns:
+        Tuple of (model, predictions, history) where predictions is a numpy
+        array of shape (n_eval, 6) and history has train_loss/val_loss lists.
+    """
     torch.manual_seed(seed)
     train_ids, train_mask, y_train, val_ids, val_mask, y_val, eval_ids, eval_mask = data
     epochs = 4 if torch.cuda.is_available() else 1
@@ -98,6 +136,8 @@ def _train_single(kind, rank, data, device, seed):
 
 
 def train_transformers(train_df, val_df, eval_df, seeds, lora_ranks=(4, 8, 16), max_len=256):
+    """Train all DistilBERT variants (frozen, full, LoRA) over multiple seeds.
+    """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if device == "cpu":
         train_df = train_df.sample(n=min(400, len(train_df)), random_state=42)
@@ -127,7 +167,10 @@ def train_transformers(train_df, val_df, eval_df, seeds, lora_ranks=(4, 8, 16), 
         histories[label] = hists
     return eval_df[TARGETS].values, preds_by_model, histories
 
+
 def train_for_probing(train_df, val_df, seed=42, max_len=256):
+    """Train a fully fine-tuned DistilBERT for use in the probing study.
+    """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     train_ids, train_mask = _encode(tokenizer, train_df["full_text"], max_len)

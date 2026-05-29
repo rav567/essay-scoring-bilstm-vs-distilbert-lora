@@ -1,3 +1,10 @@
+"""Representation analysis for fine-tuned DistilBERT essay embeddings.
+
+Produces three plots using the last hidden layer of a fine-tuned encoder:
+  - tsne_embeddings.png: 2-D t-SNE projection coloured by mean essay score.
+  - pca_traits.png: PCA scree plot of the six-dimensional label space.
+  - cross_trait_transfer.png: Heatmap of cross-trait probe transfer.
+"""
 import matplotlib
 
 matplotlib.use("Agg")
@@ -15,12 +22,19 @@ from src.transformer_models import MODEL_NAME, _encode, train_for_probing
 from src.probe import _layer_embeddings
 
 
-def _pearson(a, b):
-    corr = np.corrcoef(a, b)[0, 1]
+def _pearson(vec_a, vec_b):
+    """Compute Pearson correlation, returning 0.0 for NaN results.
+
+    Returns:
+        Pearson r as a float; 0.0 if the result is NaN.
+    """
+    corr = np.corrcoef(vec_a, vec_b)[0, 1]
     return 0.0 if np.isnan(corr) else corr
 
 
 def _plot_tsne(emb, scores, output_dir):
+    """Save a 2-D t-SNE scatter plot of essay embeddings coloured by score.
+    """
     coords = TSNE(
         n_components=2, random_state=42, init="pca",
         perplexity=min(30, len(emb) - 1),
@@ -37,6 +51,8 @@ def _plot_tsne(emb, scores, output_dir):
 
 
 def _plot_pca(labels, output_dir):
+    """Save a PCA scree plot of the six-dimensional trait label space.
+    """
     var = PCA().fit(labels).explained_variance_ratio_
     fig, axis = plt.subplots(figsize=(6, 4))
     axis.bar(range(1, len(var) + 1), var, color="#1f3b57")
@@ -49,13 +65,18 @@ def _plot_pca(labels, output_dir):
 
 
 def _plot_transfer(train_emb, test_emb, y_train, y_test, output_dir):
+    """Save a cross-trait probe-transfer heatmap.
+
+    For each source trait, a Ridge probe is trained on last-layer embeddings
+    and its predictions are correlated against every target trait.
+    """
     size = len(TARGETS)
     matrix = np.zeros((size, size))
-    for a in range(size):
-        ridge = Ridge(alpha=1.0).fit(train_emb, y_train[:, a])
+    for src in range(size):
+        ridge = Ridge(alpha=1.0).fit(train_emb, y_train[:, src])
         pred = ridge.predict(test_emb)
-        for b in range(size):
-            matrix[a, b] = _pearson(pred, y_test[:, b])
+        for tgt in range(size):
+            matrix[src, tgt] = _pearson(pred, y_test[:, tgt])
     fig, axis = plt.subplots(figsize=(6, 5))
     sns.heatmap(matrix, annot=True, fmt=".2f", cmap="magma", vmin=0, vmax=1,
                 xticklabels=TARGETS, yticklabels=TARGETS, ax=axis)
@@ -68,6 +89,12 @@ def _plot_transfer(train_emb, test_emb, y_train, y_test, output_dir):
 
 
 def run_representation(train_df, val_df, test_df, output_dir, seed=42, max_len=256):
+    """Run the full representation analysis and save all plots.
+
+    Fine-tunes a DistilBERT encoder, extracts last-layer embeddings, then
+    produces t-SNE, PCA and cross-trait transfer plots. On CPU, data is
+    subsampled to keep runtime manageable.
+    """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if device == "cpu":
         train_df = train_df.sample(n=min(400, len(train_df)), random_state=seed)
