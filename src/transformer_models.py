@@ -140,7 +140,7 @@ def train_transformers(train_df, val_df, eval_df, seeds, lora_ranks=(4, 8, 16), 
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if device == "cpu":
-        train_df = train_df.sample(n=min(400, len(train_df)), random_state=42)
+        train_df = train_df.sample(n=min(50, len(train_df)), random_state=42)
         seeds = seeds[:1]
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
