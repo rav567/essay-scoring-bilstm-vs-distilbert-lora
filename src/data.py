@@ -26,6 +26,13 @@ def _download_kaggle(data_dir):
     Raises:
         RuntimeError: If the Kaggle CLI is not found or the download fails.
     """
+    token = os.environ.get("KAGGLE_API_TOKEN")
+    if token:
+        kaggle_dir = os.path.expanduser("~/.kaggle")
+        os.makedirs(kaggle_dir, exist_ok=True)
+        with open(os.path.join(kaggle_dir, "access_token"), "w") as f:
+            f.write(token)
+        os.chmod(os.path.join(kaggle_dir, "access_token"), 0o600)
     try:
         subprocess.run(
             ["kaggle", "competitions", "download", "-c", COMPETITION, "-p", data_dir],
