@@ -73,7 +73,7 @@ def _train_single(tensors, vocab_size, seed):
     """
     x_train, y_train, x_val, y_val, x_eval = tensors
     torch.manual_seed(seed)
-    epochs = 20 if torch.cuda.is_available() else 12
+    epochs = 20 if torch.cuda.is_available() else 2
 
     model = BiLSTMRegressor(vocab_size)
     with torch.no_grad():
